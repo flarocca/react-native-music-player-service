@@ -1,6 +1,8 @@
 {
   "name": "react-native-music-player-service",
   "version": "0.1.0",
+  "description": "Ready to use music player control",
+  "license": "MIT",
   "private": false,
   "repository": {
     "type": "git",
