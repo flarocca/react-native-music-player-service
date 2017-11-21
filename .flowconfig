@@ -1,0 +1,11 @@
+[ignore]
+<PROJECT_ROOT>/node_modules/.*
+<PROJECT_ROOT>/android/.*
+<PROJECT_ROOT>/ios/.*
+
+[include]
+
+[libs]
+flow-typed
+
+[options]
