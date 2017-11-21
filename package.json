@@ -21,15 +21,11 @@
     "flow": "flow"
   },
   "jest": {
-    "preset": "react-native",
     "modulePathIgnorePatterns": [
       "__tests__/__mocks__/"
     ]
   },
   "dependencies": {
-    "react": "16.0.0-beta.5",
-    "react-native": "^0.49.5",
-    "react-native-scripts": "1.7.0",
     "react-native-sound": "^0.10.4"
   }
 }
