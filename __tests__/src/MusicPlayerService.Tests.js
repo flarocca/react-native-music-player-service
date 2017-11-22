@@ -1,7 +1,9 @@
 import 'jest';
 
 jest.mock('react-native-sound', () => ({
-  Sound: jest.fn()
+  Sound: jest.fn((path, type, callback) => {
+
+  })
 }));
 
 import Track from '../../src/Track';
@@ -57,6 +59,16 @@ test('MusicPlayerService | setQueue | new queue is set', () => {
     .then(returnedQueue => {
       expect(returnedQueue).toEqual(newQueue);
       expect(musicPlayerService.queue).toEqual(newQueue);
+    });
+});
+
+test('MusicPlayerService | setQueue | currentPosition is set to 0', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let newQueue = [new Track('1', 'some path'), new Track('2', 'some path')];
+
+  return musicPlayerService.setQueue(newQueue)
+    .then(returnedQueue => {
+      expect(musicPlayerService.currentIndex).toEqual(0);
     });
 });
 
@@ -223,3 +235,23 @@ test('MusicPlayerService | on setting events | events are set', () => {
   musicPlayerService._onPrevious();
   musicPlayerService._onEndReached();
 });
+
+test('MusicPlayerService | tooglePlayPause when is not playing and no track loaded | track at currentIndex is loaded', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let expectedPlayingTrack = new Track('1', 'some path');
+  let newQueue = [expectedPlayingTrack, new Track('2', 'some path')];
+
+  expect.assertions(2);
+  return musicPlayerService.setQueue(newQueue)
+    .then(returnedQueue => {
+      console.log('returnedQueue: ' + JSON.stringify(returnedQueue));
+      return musicPlayerService.togglePlayPause()
+    })
+    .then(() => {
+      expect(musicPlayerService._trackPlaying).not.toBeNull();
+      expect(musicPlayerService._trackPlaying.path).toEqual(expectedPlayingTrack.path);
+    })
+    .catch(err => console.log('error: ' + JSON.stringify(err)));
+});
+
+//cant play it not queue

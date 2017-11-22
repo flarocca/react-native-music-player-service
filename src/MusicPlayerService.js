@@ -37,6 +37,7 @@ export default class MusicPlayerService {
 
       //if playing, stop and release current track
       this.queue = queue.slice(0);
+      this.currentIndex = 0;
 
       return Promise.resolve(this.queue);
     } catch (error) {
@@ -67,12 +68,12 @@ export default class MusicPlayerService {
     }
   }
 
-  togglePlayPause() {
+  togglePlayPause(): Promise<any> {
     //test
-    if (this.isPlaying) {
-      this._playTrack();
+    if (!this.isPlaying) {
+      return this._playTrack();
     } else {
-      this._pauseTrack();
+      return this._pauseTrack();
     }
   }
 
@@ -179,13 +180,13 @@ export default class MusicPlayerService {
     }
   }
 
-  _playTrack(): void {
+  _playTrack(): Promise<any> {
     let promise = Promise.resolve();
     if (!this._trackPlaying) {
-      promise = this._loadTrack(this.queue[this.currentIndex])
+      promise = this._loadTrack(this.queue[this.currentIndex]);
     }
 
-    promise.then(() => {
+    return promise.then(() => {
       if (this._trackPlaying) {
         this._trackPlaying.play(success => {
           this.playNext();
@@ -194,6 +195,10 @@ export default class MusicPlayerService {
         if (this._onPlay) {
           this._onPlay();
         }
+
+        return Promise.resolve();
+      } else {
+        return Promise.reject();
       }
     });
   }
@@ -210,13 +215,17 @@ export default class MusicPlayerService {
     }
   }
 
-  _pauseTrack(): void {
+  _pauseTrack(): Promise<any> {
     if (this._trackPlaying) {
       this._trackPlaying.pause();
 
       if (this._onPause) {
         this._onPause();
       }
+
+      return Promise.resolve();
+    } else {
+      return Promise.reject();
     }
   }
 

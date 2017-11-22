@@ -5,9 +5,9 @@ export default class Track {
   path: string;
   position: ?number;
 
-  constructor(track: { id: string, path: string, position: ?number }) {
-    this.id = track.id;
-    this.path = track.path;
-    this.position = track.position;
+  constructor(id: string, path: string, position: ?number) {
+    this.id = id;
+    this.path = path;
+    this.position = position;
   }
 }
