@@ -1,10 +1,51 @@
 import 'jest';
 
-jest.mock('react-native-sound', () => ({
-  Sound: jest.fn((path, type, callback) => {
+jest.mock('react-native-sound', () => {
+  var _filename = null;
+  var _basePath = null;
 
-  })
-}));
+  var SoundMocked = (filename, basePath, onError, options) => {
+    _filename = filename;
+    _basePath = basePath;
+    onError();
+  }
+
+  SoundMocked.prototype.filename = () => _filename;
+  SoundMocked.prototype.basePath = () => _basePath;
+  SoundMocked.isLoaded = function () { };
+  SoundMocked.prototype.play = function (onEnd) { };
+  SoundMocked.prototype.pause = function (callback) { };
+  SoundMocked.prototype.stop = function (callback) { };
+  SoundMocked.prototype.reset = function () { };
+  SoundMocked.prototype.release = function () { };
+  SoundMocked.prototype.getDuration = function () { };
+  SoundMocked.prototype.getNumberOfChannels = function () { };
+  SoundMocked.prototype.getVolume = function () { };
+  SoundMocked.prototype.setVolume = function (value) { };
+  SoundMocked.prototype.getSystemVolume = function (callback) { };
+  SoundMocked.prototype.setSystemVolume = function (value) { };
+  SoundMocked.prototype.getPan = function () { };
+  SoundMocked.prototype.setPan = function (value) { };
+  SoundMocked.prototype.getNumberOfLoops = function () { };
+  SoundMocked.prototype.setNumberOfLoops = function (value) { };
+  SoundMocked.prototype.setSpeed = function (value) { };
+  SoundMocked.prototype.getCurrentTime = function (callback) { };
+  SoundMocked.prototype.setCurrentTime = function (value) { };
+  SoundMocked.prototype.setSpeakerphoneOn = function (value) { };
+  SoundMocked.prototype.setCategory = function (value) { };
+  SoundMocked.enable = function (enabled) { };
+  SoundMocked.enableInSilenceMode = function (enabled) { };
+  SoundMocked.setActive = function (value) { };
+  SoundMocked.setCategory = function (value, mixWithOthers = false) { };
+  SoundMocked.setMode = function (value) { };
+
+  SoundMocked.MAIN_BUNDLE = 0;
+  SoundMocked.DOCUMENT = 1;
+  SoundMocked.LIBRARY = 2;
+  SoundMocked.CACHES = 3;
+
+  return SoundMocked;
+});
 
 import Track from '../../src/Track';
 import MusicPlayerService from '../../src/MusicPlayerService';
@@ -241,17 +282,16 @@ test('MusicPlayerService | tooglePlayPause when is not playing and no track load
   let expectedPlayingTrack = new Track('1', 'some path');
   let newQueue = [expectedPlayingTrack, new Track('2', 'some path')];
 
-  expect.assertions(2);
+  expect.assertions(3);
   return musicPlayerService.setQueue(newQueue)
     .then(returnedQueue => {
-      console.log('returnedQueue: ' + JSON.stringify(returnedQueue));
       return musicPlayerService.togglePlayPause()
     })
     .then(() => {
       expect(musicPlayerService._trackPlaying).not.toBeNull();
-      expect(musicPlayerService._trackPlaying.path).toEqual(expectedPlayingTrack.path);
-    })
-    .catch(err => console.log('error: ' + JSON.stringify(err)));
+      expect(musicPlayerService._trackPlaying.filename()).toEqual(expectedPlayingTrack.path);
+      expect(musicPlayerService._trackPlaying.basePath()).toEqual(2);
+    });
 });
 
 //cant play it not queue
