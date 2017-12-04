@@ -6,6 +6,14 @@ import Track from './Track';
 import RepeatModes from './RepeatModes';
 import Events from './Events';
 
+let _isFunction = (value: any): boolean => {
+  return (typeof value === 'function');
+}
+
+let _isNumber = (value: any): boolean => {
+  return !isNaN(parseFloat(value)) && isFinite(value);
+}
+
 export default class MusicPlayerService {
   random: boolean;
   repeatMode: RepeatModes.None | RepeatModes.All | RepeatModes.One;
@@ -15,6 +23,8 @@ export default class MusicPlayerService {
 
   _trackPlaying: ?Sound;
   _validateQueue: Function;
+  _customRandomGenerator: ?Function;
+  _randomGenerator: ?Function;
   _onPlay: Function;
   _onPause: Function;
   _onStop: Function;
@@ -35,13 +45,41 @@ export default class MusicPlayerService {
     try {
       this._validateQueue(queue);
 
-      //if playing, stop and release current track
+      if (this.isPlaying) {
+        this.stop();
+      }
+
       this.queue = queue.slice(0);
       this.currentIndex = 0;
+
+      if (this.isPlaying) {
+        this._playTrack();
+      }
 
       return Promise.resolve(this.queue);
     } catch (error) {
       return Promise.reject(error);
+    }
+  }
+
+  setRandomGenerator(customRandomGenerator: Function): void {
+    if (customRandomGenerator === undefined || customRandomGenerator === null || !_isFunction(customRandomGenerator)) {
+      throw new Error('Callback must not be null nor undefined. Allowed [Function]. Received [' + customRandomGenerator + ']');
+    }
+
+    this._customRandomGenerator = customRandomGenerator;
+  }
+
+  setRepeatMode(repeatMode: RepeatModes.None | RepeatModes.All | RepeatModes.One): string {
+    switch (repeatMode) {
+      case RepeatModes.None:
+      case RepeatModes.All:
+      case RepeatModes.One:
+        this.repeatMode = repeatMode;
+        return this.repeatMode;
+
+      default:
+        throw new Error('Invalid repeat mode. Allowed [all | one | none]. Received [' + repeatMode + ']');
     }
   }
 
@@ -69,7 +107,6 @@ export default class MusicPlayerService {
   }
 
   togglePlayPause(): Promise<any> {
-    //test
     if (!this.isPlaying) {
       return this._playTrack();
     } else {
@@ -78,10 +115,9 @@ export default class MusicPlayerService {
   }
 
   playNext(): void {
-    //test
     this._setNextTrack();
     if (this._onNext) {
-      this._onNext();
+      this._onNext(this.queue[this.currentIndex]);
     }
 
     if (this.isPlaying) {
@@ -90,10 +126,9 @@ export default class MusicPlayerService {
   }
 
   playPrev(): void {
-    //test
     this._setPreviousTrack();
     if (this._onPrevious) {
-      this._onPrevious();
+      this._onPrevious(this.queue[this.currentIndex]);
     }
 
     if (this.isPlaying) {
@@ -102,7 +137,6 @@ export default class MusicPlayerService {
   }
 
   stop(): void {
-    //test
     if (this._trackPlaying) {
       this._trackPlaying.stop();
       this._releaseTrack();
@@ -113,27 +147,14 @@ export default class MusicPlayerService {
     }
   }
 
-  setRepeatMode(repeatMode: RepeatModes.None | RepeatModes.All | RepeatModes.One): string {
-    switch (repeatMode) {
-      case RepeatModes.None:
-      case RepeatModes.All:
-      case RepeatModes.One:
-        this.repeatMode = repeatMode;
-        return this.repeatMode;
-
-      default:
-        throw new Error('Invalid repeat mode. Allowed [all | one | none]. Received [' + repeatMode + ']');
-    }
-  }
-
   toggleRandom(): boolean {
     this.random = !this.random;
     return this.random;
   }
 
   on(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached, callback: Function): void {
-    if (callback === undefined || callback === null) {
-      throw new Error('Callback must not be null nor undefined');
+    if (callback === undefined || callback === null || !_isFunction(callback)) {
+      throw new Error('Callback must not be null nor undefined. Allowed [Function]. Received [ ' + callback + ']');
     }
 
     switch (event) {
@@ -157,6 +178,28 @@ export default class MusicPlayerService {
         break;
       default:
         throw new Error('Invalid event. Allowed [play | pause | stop | next | previous | endReached]. Received [' + event + ']');
+    }
+  }
+
+  getDuration(): number {
+    if (this.isPlaying) {
+      return this._trackPlaying.getDuration();
+    }
+
+    return 0;
+  }
+
+  getCurrentTime(): Promise<number> {
+    if (this.isPlaying) {
+      return this._trackPlaying.getCurrentTime();
+    }
+
+    return Promise.resolve(0);
+  }
+
+  setCurrentTime(time: number): void {
+    if (time === undefined || time === null || !_isNumber(time) || time < 0) {
+      throw new Error('Time must not be null nor undefined. Allowed [Number | 0 >=]. Received [' + time + ']');
     }
   }
 
@@ -192,6 +235,8 @@ export default class MusicPlayerService {
           this.playNext();
         });
 
+        this.isPlaying = true;
+
         if (this._onPlay) {
           this._onPlay();
         }
@@ -219,6 +264,8 @@ export default class MusicPlayerService {
     if (this._trackPlaying) {
       this._trackPlaying.pause();
 
+      this.isPlaying = false;
+
       if (this._onPause) {
         this._onPause();
       }
@@ -231,17 +278,17 @@ export default class MusicPlayerService {
 
   _getNextNoneRepeatMode(): number {
     if (this.random)
-      return Math.floor(Math.random() * (this.queue.length - 1));
+      return this._randomGenerator();
 
     if (this.queue.length - 1 === this.currentIndex)
-      return -1;
+      return this.currentIndex;
 
     return this.currentIndex + 1;
   }
 
   _getNextAllRepeatMode(): number {
     if (this.random)
-      return Math.floor(Math.random() * (this.queue.length - 1));
+      return this._randomGenerator();
 
     if (this.queue.length - 1 === this.currentIndex)
       return 0;
@@ -251,17 +298,17 @@ export default class MusicPlayerService {
 
   _getPrevNoneRepeatMode(): number {
     if (this.random)
-      return Math.floor(Math.random() * (this.queue.length - 1));
+      return this._randomGenerator();
 
     if (0 === this.currentIndex)
-      return -1;
+      return 0;
 
     return this.currentIndex - 1;
   }
 
   _getPrevAllRepeatMode(): number {
     if (this.random)
-      return Math.floor(Math.random() * (this.queue.length - 1));
+      return this._randomGenerator();
 
     if (0 === this.currentIndex)
       return this.queue.length - 1;
@@ -295,6 +342,13 @@ export default class MusicPlayerService {
     }
 
     this.currentIndex = nextIndex;
+  }
+
+  _randomGenerator(): number {
+    if (this._customRandomGenerator)
+      return this._customRandomGenerator();
+
+    return Math.floor(Math.random() * (this.queue.length - 1));
   }
 }
 
