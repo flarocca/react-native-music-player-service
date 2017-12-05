@@ -7,22 +7,36 @@ It is intended to be used with no configuration and to have a clean and simple i
 
 It is based on [react-native-sound](https://github.com/zmxv/react-native-sound) which is a great library and easy to use. So **react-native-music-player-service** tries to add some semantic through its API interface
 
+
 ## Installation
 
+```
+npm install -save react-native-music-player-service
+```
+
+
 ## API Overview
+
+Property | Type | Description
+---|---|---
+random | ``boolean`` | Indicates whether random mode is toggled on or off
+repeatMode | ``RepeatModes`` | Indicates which type of repeating mode is set
+queue | ``Array<Track>`` | Current queue
+isPlaying | ``boolean`` | Indicates whther the current track is in reproduction or not
+currentIndex | ``number`` | Points to the current track in the queue
 
 Method | Description
 ---|---
 setQueue | Set a list of track as a new queue for playing.
 setRandomGenerator | Allows to set a custom function in order to generate the next index from the queue to be reproduced. 
-setRepeatMode | Sets the repeat mode to use. Use RepeatModes enum. <ul><li>RepeatModes.None</li><li>RepeatModes.One</li><li>RepeatModes.All</li></ul>
+setRepeatMode | Sets the repeat mode to use. Use RepeatModes enum. <ul><li>``RepeatModes.None``</li><li>``RepeatModes.One``</li><li>``RepeatModes.All``</li></ul>
 appendToQueue | Appends to the current queue a new list of tracks.
 togglePlayPause | Play or Pause the current track.
 playNext | Play the next track in the queue.
 playPrev | Play the previous track in the queue.
 stop | Stop the current track.
 toggleRandom | Set random mode to true or false.
-on | Allows to set a callback for the differents events. <ul><li>Events.Play</li><li>Events.Pause</li><li>Events.Stop</li><li>Events.Next</li><li>Events.Previous</li><li>Events.EndReached</li></ul>
+on | Allows to set a callback for different events. <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li></ul>
 getDuration | Gets the duration of the current track
 getCurrentTime | Gets the current played elapsed time of the current track
 setCurrentTime | Sets the current played elapsed time of the current track
@@ -34,7 +48,7 @@ Sets a list of tracks as a new queue to be played. This will replace the current
 
 - Return type: ``Promise<Array<Track>>``
 
-Parameters | Type | Mandatory
+:Parameters | :Type | :Mandatory
 ---|---|---
 queue | ``Array<Track>`` | ✓
 
@@ -46,7 +60,7 @@ If you want to reset this generator in order to use the build-in one, just set i
 
 - Return type: ``void``
 
-Parameters | Type | Mandatory
+:Parameters | :Type | :Mandatory
 ---|---|---
 customRandomGenerator | ``Function: number`` | 
 
@@ -61,7 +75,7 @@ Sets the repeat mode, by default the repeat mode is set to ``None``. Allowed val
 
 - Return type: ``string``
 
-Parameters | Type | Mandatory
+:Parameters | :Type | :Mandatory
 ---|---|---
 repeatMode | <ul><li>``RepeatModes.None``</li><li>``RepeatModes.One``</li><li>``RepeatModes.All``</li></ul> | ✓
 
@@ -73,7 +87,7 @@ Appends to the existing queue the queue passed as a parameter. By default, the n
 
 - Return type: ``Promise<Array<Track>>``
 
-Parameters | Type | Mandatory
+:Parameters | :Type | :Mandatory
 ---|---|---
 queue | ``Array<Track>`` | ✓
 atPosition | ``number`` | 
@@ -81,14 +95,125 @@ atPosition | ``number`` |
 
 ### togglePlayPause
 
-Starts playing the track at the current index or pauses it if it is already playing.
-The queue should have already set so there is something to reproduce, otherwise thr reproduction will not start.
+Starts playing the track at the current index or pauses it if it was already playing.
+The queue should have already set so there is something to play, otherwise it will not start.
+
+If Events.Play was set, then that callback will be fired receiving the current Track as a parameter.
 
 - Return type: ``Promise<Any>``
 
 
+### playNext
+
+It jumps to the next track in the queue according to the repeat mode selected:
+
+- ``RepeatModes.None``: jumps to the next track in the queue until the last track. Once the last index is reached it stops there
+- ``RepeatModes.One``: keeps on the same track
+- ``RepeatModes.All``: jumps to the next track in the queue until the last track. Once the last index is reached it starts from the beggining (position 0)
+
+If the service is actually playing the track will start automatically after changing.
+When the random mode is toggled on, ``RepeatModes.All`` and ``RepeatModes.None`` behave the same, jumping according to the random generator.
+
+If Events.Next was set, then that callback will be fired receiving the current Track as a parameter.
+
+- Return type: ``void``
+
+
+### playPrev
+
+It jumps to the previous track in the queue according to the repeat mode selected:
+
+- ``RepeatModes.None``: jumps to the previous track in the queue until the first track. Once the first index is reached it stops there
+- ``RepeatModes.One``: keeps on the same track
+- ``RepeatModes.All``: jumps to the provious track in the queue until the first track. Once the first index is reached it starts from the end (position queue.length - 1)
+
+If the service is actually playing the track will start automatically after changing.
+When the random mode is toggled on, ``RepeatModes.All`` and ``RepeatModes.None`` behave the same, jumping according to the random generator.
+
+If Events.Previous was set, then that callback will be fired receiving the current Track as a parameter.
+
+- Return type: ``void``
+
+
+### stop
+
+Stops the current reproduction and release the resources taken. It does not reset the queue.
+
+If Events.Stop was set, then that callback will be fired.
+
+- Return type: ``void``
+
+
+### toggleRandom
+
+Toggles the random mode between true and false. When this mode is toggled on the next or previous track to be played is calculated using the random generator function. Default value for random is ``false``.
+It will return the value after changing.
+
+If there is no custom random generator set, the following generator will be used:
+
+```javascript
+Math.floor(Math.random() * (this.queue.length - 1))
+```
+
+- Return type: ``boolean``
+
+
+### addEventListener
+
+Allows to set a callback to be fired when the corresponding event.
+
+- Return type: ``void``
+
+:Parameters | :Type | :Mandatory
+---|---|---
+event | <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li></ul> | ✓
+callback | ``Function`` | ✓
+
+
+### removeEventListener
+
+Allows to remove a callback to the corresponding event.
+
+- Return type: ``void``
+
+:Parameters | :Type | :Mandatory
+---|---|---
+event | <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li></ul> | ✓
+
+
+### getDuration
+
+Returns the duration of the track at the current index in the queue. If there is no track in the queue it returns 0.
+
+- Return type: ``number``
+
+
+### getCurrentTime
+
+Returns tue current timeframe where the current track is situated. If there is no track it returns 0.
+
+- Return type: ``Promise<number>``
+
+
+### setCurrentTime
+
+Sets tue current timeframe where the current track is situated. If there is no track loaded it does nothing.
+Time must be a number greater or equal than 0. An exception is thrown otherwise.
+
+- Return type: ``void``
+
+:Parameters | :Type | :Mandatory
+---|---|---
+time | ``number`` | ✓
+
+
 ## Usage
 
+```javascript
+
+```
+
 ## FAQ
+
 
 # Under construction
