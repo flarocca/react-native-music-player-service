@@ -5,13 +5,16 @@
 React Native module ready to use for playing music and managing queue.
 It is intended to be used with no configuration and to have a clean and simple interface. It also provides almost everything what it is needed in order to work as a music player.
 
-It is based on [react-native-sound](https://github.com/zmxv/react-native-sound) which is a great library and easy to use. So **react-native-music-player-service** tries to add some semantic through its API interface
+It is based on [react-native-sound](https://github.com/zmxv/react-native-sound) and [react-native-music-control](https://github.com/tanguyantoine/react-native-music-control) which are great libraries and easy to use. So **react-native-music-player-service** tries to add some semantic through their API interfaces and put them to work togheter so It can be used with a minimal effort.
 
 
 ## Installation
 
 ```
 npm install -save react-native-music-player-service
+```
+```
+react-native link
 ```
 
 
@@ -24,11 +27,14 @@ repeatMode | ``RepeatModes`` | Indicates which type of repeating mode is set
 queue | ``Array<Track>`` | Current queue
 isPlaying | ``boolean`` | Indicates whther the current track is in reproduction or not
 currentIndex | ``number`` | Points to the current track in the queue
+enableSetNowPlaying | ``boolean`` | Indicates whether to use Music Control or not
+setNowPlayingConfig | ``{ notificationIcon: string, color: number }`` | Configuration eventually required by **react-native-music-control**
 
 Method | Description
 ---|---
 setQueue | Set a list of track as a new queue for playing.
 setRandomGenerator | Allows to set a custom function in order to generate the next index from the queue to be reproduced. 
+resetRandomGenerator | Sets back the random generator to the original one. 
 setRepeatMode | Sets the repeat mode to use. Use RepeatModes enum. <ul><li>``RepeatModes.None``</li><li>``RepeatModes.One``</li><li>``RepeatModes.All``</li></ul>
 appendToQueue | Appends to the current queue a new list of tracks.
 togglePlayPause | Play or Pause the current track.
@@ -43,13 +49,23 @@ getCurrentTime | Gets the current played elapsed time of the current track
 setCurrentTime | Sets the current played elapsed time of the current track
 
 
+### constructor
+
+Allows to activate the music control provided by **react-native-music-control** and its configuration. If ``enableSetNowPlaying`` is set to ``true`` the music control will be available. The music control will be updated everytime the current tarck changes and will also respond to commands executed by the user.
+
+Parameters | Type | Mandatory
+---|---|---
+enableSetNowPlaying | ``boolean`` | 
+setNowPlayingConfig | ``{ notificationIcon: string, color: number }`` | ✓
+
+
 ### setQueue
 
 Sets a list of tracks as a new queue to be played. This will replace the current queue. In addition, It will also stop and release the current playing track if playing.
 
 - Return type: ``Promise<Array<Track>>``
 
-:Parameters | :Type | :Mandatory
+Parameters | Type | Mandatory
 ---|---|---
 queue | ``Array<Track>`` | ✓
 
@@ -61,9 +77,16 @@ If you want to reset this generator in order to use the build-in one, just set i
 
 - Return type: ``void``
 
-:Parameters | :Type | :Mandatory
+Parameters | Type | Mandatory
 ---|---|---
 customRandomGenerator | ``Function: number`` | 
+
+
+### resetRandomGenerator
+
+Sets back the random generator to the original one.
+
+- Return type: ``void``
 
 
 ### setRepeatMode
@@ -76,7 +99,7 @@ Sets the repeat mode, by default the repeat mode is set to ``None``. Allowed val
 
 - Return type: ``string``
 
-:Parameters | :Type | :Mandatory
+Parameters | Type | Mandatory
 ---|---|---
 repeatMode | <ul><li>``RepeatModes.None``</li><li>``RepeatModes.One``</li><li>``RepeatModes.All``</li></ul> | ✓
 
@@ -88,7 +111,7 @@ Appends to the existing queue the queue passed as a parameter. By default, the n
 
 - Return type: ``Promise<Array<Track>>``
 
-:Parameters | :Type | :Mandatory
+Parameters | Type | Mandatory
 ---|---|---
 queue | ``Array<Track>`` | ✓
 atPosition | ``number`` | 
@@ -165,7 +188,7 @@ Allows to set a callback to be fired when the corresponding event.
 
 - Return type: ``void``
 
-:Parameters | :Type | :Mandatory
+Parameters | Type | Mandatory
 ---|---|---
 event | <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li></ul> | ✓
 callback | ``Function`` | ✓
@@ -177,7 +200,7 @@ Allows to remove a callback to the corresponding event.
 
 - Return type: ``void``
 
-:Parameters | :Type | :Mandatory
+Parameters | Type | Mandatory
 ---|---|---
 event | <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li></ul> | ✓
 
@@ -203,16 +226,77 @@ Time must be a number greater or equal than 0. An exception is thrown otherwise.
 
 - Return type: ``void``
 
-:Parameters | :Type | :Mandatory
+Parameters | Type | Mandatory
 ---|---|---
 time | ``number`` | ✓
+
+
+### Track
+
+Parameters | Type | Mandatory
+---|---|---
+id | ``string`` | ✓
+path | ``string`` | ✓
+position | ``number`` | 
+additionalInfo | <ul><li>title: ``?string``</li><li>artwork: ``?any``</li><li>artist: ``?string``</li><li>album: ``?string``</li><li>genre: ``?string``</li><li>duration: ``?number``</li></ul> | 
+
+- **additionalInfo** will be used to show information about the current tarck in the music control
+- **position** is set after the queue is set or appended. It does not actually support pre-ordering based on it. If you want to have a partilar order, you must do it before setting the queue at the creation of the array level.
 
 
 ## Usage
 
 ```javascript
+import MusicPlayerService, { Track, Events, RepeatModes } from 'react-native-music-player-service';
+
+const _event = (event, track) => { 
+    console.log(event.toString() + ' has been raised with ' + track.toString());
+}
+
+const setNowPlayingConfig = {
+  color: 0x2E2E2E,
+  notificationIcon: 'my_custom_icon'
+}
+
+var musicPlayerService = new MusicPlayerService(true, setNowPlayingConfig);
+
+/* Initialization */
+musicPlayerService.addEventListener(Events.Play, track => _event(Events.Play, track));
+musicPlayerService.addEventListener(Events.Pause, track => _event(Events.Pause, track));
+musicPlayerService.addEventListener(Events.Next, track => _event(Events.Next, track));
+musicPlayerService.addEventListener(Events.Previous, track => _event(Events.Previous, track));
+musicPlayerService.addEventListener(Events.EndReached, track => _event(Events.EndReached, track));
+
+/* Setting up the queue */
+var songsInformation = [
+    {
+        id: "1",
+        path: "//path_phisical_file",
+        title: "track_1",
+        album: "some album",
+        artist: "some artist",
+        genre: "some genre",
+        duration: 2260,
+        artwork: "//path_to_image"
+    }
+]
+var tracks = songsInformation.map(s => {
+    return new Track({id: s.id, path: s.path, additionalInfo: s});
+})
+
+musicPlayerService.setQueue(tracks)
+  .then(returnedQueue => {
+      console.log('Queue has been set');
+  });
+```
+
+
+## Usage with Redux
+
+```javascript
 
 ```
+
 
 ## FAQ
 
