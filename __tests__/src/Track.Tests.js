@@ -88,7 +88,7 @@ it('Track | creating new | properties are set', () => {
     id: 1,
     path: 'path',
     position: 0,
-    aditionalInfo: {}
+    additionalInfo: {}
   };
 
   let track = new Track(properties);
@@ -96,5 +96,5 @@ it('Track | creating new | properties are set', () => {
   expect(track.id).toEqual(properties.id);
   expect(track.path).toEqual(properties.path);
   expect(track.position).toEqual(properties.position);
-  expect(track.aditionalInfo).toEqual(properties.aditionalInfo);
+  expect(track.additionalInfo).toEqual(properties.additionalInfo);
 });

@@ -7,3 +7,5 @@
 flow-typed
 
 [options]
+module.name_mapper='(react-native-sound)' -> 'empty/object'
+module.name_mapper='(react-native-music-control)' -> 'empty/object'

@@ -36,7 +36,8 @@ playNext | Play the next track in the queue.
 playPrev | Play the previous track in the queue.
 stop | Stop the current track.
 toggleRandom | Set random mode to true or false.
-on | Allows to set a callback for different events. <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li></ul>
+addEventListener | Allows to set a callback for different events. <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li></ul>
+removeEventListener | Removes a callback for a particular event. <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li></ul>
 getDuration | Gets the duration of the current track
 getCurrentTime | Gets the current played elapsed time of the current track
 setCurrentTime | Sets the current played elapsed time of the current track
@@ -190,7 +191,7 @@ Returns the duration of the track at the current index in the queue. If there is
 
 ### getCurrentTime
 
-Returns tue current timeframe where the current track is situated. If there is no track it returns 0.
+Returns the current elapsed time in seconds. If there is no track (e.g. calling it before setting the queue) it returns 0.
 
 - Return type: ``Promise<number>``
 

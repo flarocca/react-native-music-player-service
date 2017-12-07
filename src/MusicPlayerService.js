@@ -1,17 +1,49 @@
 //@flow
 
 import Sound from 'react-native-sound';
+import MusicControl from 'react-native-music-control';
 
+import Utils from './Utils';
 import Track from './Track';
 import RepeatModes from './RepeatModes';
 import Events from './Events';
 
-let _isFunction = (value: any): boolean => {
-  return (typeof value === 'function');
-}
+//test: general errors managment
 
-let _isNumber = (value: any): boolean => {
-  return !isNaN(parseFloat(value)) && isFinite(value);
+let _bindFunctions = (contenxt: any): void => {
+  contenxt.setQueue = contenxt.setQueue.bind(contenxt);
+  contenxt.setRandomGenerator = contenxt.setRandomGenerator.bind(contenxt);
+  contenxt.resetRandomGenerator = contenxt.resetRandomGenerator.bind(contenxt);
+  contenxt.setRepeatMode = contenxt.setRepeatMode.bind(contenxt);
+  contenxt.appendToQueue = contenxt.appendToQueue.bind(contenxt);
+  contenxt.togglePlayPause = contenxt.togglePlayPause.bind(contenxt);
+  contenxt.playNext = contenxt.playNext.bind(contenxt);
+  contenxt.playPrev = contenxt.playPrev.bind(contenxt);
+  contenxt.stop = contenxt.stop.bind(contenxt);
+  contenxt.toggleRandom = contenxt.toggleRandom.bind(contenxt);
+  contenxt.addEventListener = contenxt.addEventListener.bind(contenxt);
+  contenxt.removeEventListener = contenxt.removeEventListener.bind(contenxt);
+  contenxt.getDuration = contenxt.getDuration.bind(contenxt);
+  contenxt.getCurrentTime = contenxt.getCurrentTime.bind(contenxt);
+  contenxt.setCurrentTime = contenxt.setCurrentTime.bind(contenxt);
+
+  contenxt._initializeMusicControl = contenxt._initializeMusicControl.bind(contenxt);
+  contenxt._setEventListener = contenxt._setEventListener.bind(contenxt);
+  contenxt._loadTrack = contenxt._loadTrack.bind(contenxt);
+  contenxt._releaseTrack = contenxt._releaseTrack.bind(contenxt);
+  contenxt._playTrack = contenxt._playTrack.bind(contenxt);
+  contenxt._validateQueue = contenxt._validateQueue.bind(contenxt);
+  contenxt._pauseTrack = contenxt._pauseTrack.bind(contenxt);
+  contenxt._getNextNoneRepeatMode = contenxt._getNextNoneRepeatMode.bind(contenxt);
+  contenxt._getNextAllRepeatMode = contenxt._getNextAllRepeatMode.bind(contenxt);
+  contenxt._getPrevNoneRepeatMode = contenxt._getPrevNoneRepeatMode.bind(contenxt);
+  contenxt._getPrevAllRepeatMode = contenxt._getPrevAllRepeatMode.bind(contenxt);
+  contenxt._setNextTrack = contenxt._setNextTrack.bind(contenxt);
+  contenxt._setPreviousTrack = contenxt._setPreviousTrack.bind(contenxt);
+  contenxt._randomGenerator = contenxt._randomGenerator.bind(contenxt);
+  contenxt._setNowPlaying = contenxt._setNowPlaying.bind(contenxt);
+  contenxt._updatePlayback = contenxt._updatePlayback.bind(contenxt);
+  contenxt._getInfo = contenxt._getInfo.bind(contenxt);
 }
 
 export default class MusicPlayerService {
@@ -20,25 +52,50 @@ export default class MusicPlayerService {
   queue: Array<Track>;
   isPlaying: boolean;
   currentIndex: number;
+  enableSetNowPlaying: boolean;
+  setNowPlayingConfig: ?{ notificationIcon: string, color: number };
+
+  setQueue: Function;
+  setRandomGenerator: Function;
+  resetRandomGenerator: Function;
+  setRepeatMode: Function;
+  appendToQueue: Function;
+  togglePlayPause: Function;
+  playNext: Function;
+  playPrev: Function;
+  stop: Function;
+  toggleRandom: Function;
+  addEventListener: Function;
+  removeEventListener: Function;
+  getDuration: Function;
+  getCurrentTime: Function;
+  setCurrentTime: Function;
 
   _trackPlaying: ?Sound;
   _validateQueue: Function;
   _customRandomGenerator: ?Function;
-  _randomGenerator: ?Function;
-  _onPlay: Function;
-  _onPause: Function;
-  _onStop: Function;
-  _onNext: Function;
-  _onPrevious: Function;
-  _onEndReached: Function;
+  _onPlay: ?Function;
+  _onPause: ?Function;
+  _onStop: ?Function;
+  _onNext: ?Function;
+  _onPrevious: ?Function;
+  _onEndReached: ?Function;
 
-  constructor() {
+  constructor(enableSetNowPlaying: boolean = false, setNowPlayingConfig: ?{ notificationIcon: string, color: number } = null) {
+    _bindFunctions(this);
+
     this.random = false;
     this.repeatMode = RepeatModes.None;
     this.queue = [];
     this.currentIndex = -1;
     this.isPlaying = false;
+    this.enableSetNowPlaying = enableSetNowPlaying;
     this._trackPlaying = null;
+
+    if (this.enableSetNowPlaying) {
+      this.setNowPlayingConfig = setNowPlayingConfig;
+      this._initializeMusicControl();
+    }
   }
 
   setQueue(queue: Array<Track>): Promise<Array<Track>> {
@@ -49,25 +106,35 @@ export default class MusicPlayerService {
         this.stop();
       }
 
-      this.queue = queue.slice(0);
+      this.queue = queue.slice(0).map((track, index) => {
+        track.position = index;
+        return track;
+      });
       this.currentIndex = 0;
 
-      if (this.isPlaying) {
-        this._playTrack();
-      }
+      return this._loadTrack(this.queue[this.currentIndex])
+        .then(() => {
+          if (this.isPlaying) {
+            this._playTrack();
+          }
 
-      return Promise.resolve(this.queue);
+          return Promise.resolve(this.queue);
+        });
     } catch (error) {
       return Promise.reject(error);
     }
   }
 
   setRandomGenerator(customRandomGenerator: Function): void {
-    if (customRandomGenerator === undefined || customRandomGenerator === null || !_isFunction(customRandomGenerator)) {
+    if (customRandomGenerator === undefined || customRandomGenerator === null || !Utils.isFunction(customRandomGenerator)) {
       throw new Error('Callback must not be null nor undefined. Allowed [Function]. Received [' + customRandomGenerator + ']');
     }
 
     this._customRandomGenerator = customRandomGenerator;
+  }
+
+  resetRandomGenerator() {
+    this._customRandomGenerator = null;
   }
 
   setRepeatMode(repeatMode: RepeatModes.None | RepeatModes.All | RepeatModes.One): string {
@@ -92,13 +159,17 @@ export default class MusicPlayerService {
 
         if (!isNaN(pos) && (pos >= 0 && pos < this.queue.length)) {
           let after = this.queue.splice(0, atPosition || this.queue.length - 1);
-          this.queue = this.queue.concat(queue).concat(after);
+          this.queue = this.queue.concat(queue).concat(after).map((track, index) => {
+            track.position = index;
+            return track;
+          });
         } else {
           throw new Error('Parameter atPosition must be a number between 0 and queue.length. Received [' + atPosition + ']');
         }
       } else {
         this.queue = this.queue.concat(queue);
       }
+      //If no queue, then set currentIndex
 
       return Promise.resolve(this.queue);
     } catch (error) {
@@ -107,7 +178,15 @@ export default class MusicPlayerService {
   }
 
   togglePlayPause(): Promise<any> {
+    if (!this.queue.length) {
+      return Promise.reject('Queue not set. Set queue before playing.');
+    }
+
     if (!this.isPlaying) {
+      if (this.enableSetNowPlaying) {
+        this._setNowPlaying(this.queue[this.currentIndex]);
+      }
+
       return this._playTrack();
     } else {
       return this._pauseTrack();
@@ -115,24 +194,48 @@ export default class MusicPlayerService {
   }
 
   playNext(): void {
+    let lastIndex = this.currentIndex;
     this._setNextTrack();
-    if (this._onNext) {
-      this._onNext(this.queue[this.currentIndex]);
-    }
 
-    if (this.isPlaying) {
-      this._playTrack();
+    if (lastIndex !== this.currentIndex) {
+      this._releaseTrack();
+
+      let track = this.queue[this.currentIndex];
+
+      if (this.enableSetNowPlaying) {
+        this._setNowPlaying(track);
+      }
+
+      if (this._onNext) {
+        this._onNext(track);
+      }
+
+      if (this.isPlaying) {
+        this._playTrack();
+      }
     }
   }
 
   playPrev(): void {
+    let lastIndex = this.currentIndex;
     this._setPreviousTrack();
-    if (this._onPrevious) {
-      this._onPrevious(this.queue[this.currentIndex]);
-    }
 
-    if (this.isPlaying) {
-      this._playTrack();
+    if (lastIndex !== this.currentIndex) {
+      this._releaseTrack();
+
+      let track = this.queue[this.currentIndex];
+
+      if (this.enableSetNowPlaying) {
+        this._setNowPlaying(track);
+      }
+
+      if (this._onPrevious) {
+        this._onPrevious(track);
+      }
+
+      if (this.isPlaying) {
+        this._playTrack();
+      }
     }
   }
 
@@ -140,6 +243,10 @@ export default class MusicPlayerService {
     if (this._trackPlaying) {
       this._trackPlaying.stop();
       this._releaseTrack();
+
+      if (this.enableSetNowPlaying) {
+        this._updatePlayback(MusicControl.STATE_PAUSED);
+      }
 
       if (this._onStop) {
         this._onStop();
@@ -152,11 +259,63 @@ export default class MusicPlayerService {
     return this.random;
   }
 
-  on(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached, callback: Function): void {
-    if (callback === undefined || callback === null || !_isFunction(callback)) {
+  addEventListener(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached, callback: Function): void {
+    if (callback === undefined || callback === null || !Utils.isFunction(callback)) {
       throw new Error('Callback must not be null nor undefined. Allowed [Function]. Received [ ' + callback + ']');
     }
 
+    this._setEventListener(event, callback);
+  }
+
+  removeEventListener(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached): void {
+    this._setEventListener(event, null);
+  }
+
+  getDuration(): number {
+    if (this._trackPlaying) {
+      return this._trackPlaying.getDuration();
+    }
+
+    return 0;
+  }
+
+  getCurrentTime(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      if (this._trackPlaying) {
+        this._trackPlaying.getCurrentTime(currentTime => {
+          resolve(currentTime);
+        });
+      } else {
+        resolve(0);
+      }
+    });
+  }
+
+  setCurrentTime(time: number): void {
+    if (time === undefined || time === null || !Utils.isNumber(time) || time < 0) {
+      throw new Error('Time must not be null nor undefined. Allowed [Number | 0 >=]. Received [' + time + ']');
+    }
+
+    if (this._trackPlaying) {
+      this._trackPlaying.setCurrentTime(time);
+    }
+  }
+
+  _initializeMusicControl(): void {
+    MusicControl.enableBackgroundMode(true);
+
+    MusicControl.enableControl('play', true);
+    MusicControl.enableControl('pause', true);
+    MusicControl.enableControl('nextTrack', true);
+    MusicControl.enableControl('previousTrack', true);
+
+    MusicControl.on('play', this.togglePlayPause);
+    MusicControl.on('pause', this.togglePlayPause);
+    MusicControl.on('nextTrack', this.playNext);
+    MusicControl.on('previousTrack', this.playPrev);
+  }
+
+  _setEventListener(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached, callback: ?Function) {
     switch (event) {
       case Events.Play:
         this._onPlay = callback;
@@ -181,28 +340,6 @@ export default class MusicPlayerService {
     }
   }
 
-  getDuration(): number {
-    if (this.isPlaying) {
-      return this._trackPlaying.getDuration();
-    }
-
-    return 0;
-  }
-
-  getCurrentTime(): Promise<number> {
-    if (this.isPlaying) {
-      return this._trackPlaying.getCurrentTime();
-    }
-
-    return Promise.resolve(0);
-  }
-
-  setCurrentTime(time: number): void {
-    if (time === undefined || time === null || !_isNumber(time) || time < 0) {
-      throw new Error('Time must not be null nor undefined. Allowed [Number | 0 >=]. Received [' + time + ']');
-    }
-  }
-
   _loadTrack(track: Track): Promise<any> {
     return new Promise((resolve: Function, reject: Function) => {
       this._releaseTrack();
@@ -220,13 +357,16 @@ export default class MusicPlayerService {
   _releaseTrack(): void {
     if (this._trackPlaying) {
       this._trackPlaying.release();
+      this._trackPlaying = null;
     }
   }
 
   _playTrack(): Promise<any> {
+    let track = this.queue[this.currentIndex];
     let promise = Promise.resolve();
+
     if (!this._trackPlaying) {
-      promise = this._loadTrack(this.queue[this.currentIndex]);
+      promise = this._loadTrack(track);
     }
 
     return promise.then(() => {
@@ -237,8 +377,12 @@ export default class MusicPlayerService {
 
         this.isPlaying = true;
 
+        if (this.enableSetNowPlaying) {
+          this._updatePlayback(MusicControl.STATE_PLAYING);
+        }
+
         if (this._onPlay) {
-          this._onPlay();
+          this._onPlay(track);
         }
 
         return Promise.resolve();
@@ -265,6 +409,10 @@ export default class MusicPlayerService {
       this._trackPlaying.pause();
 
       this.isPlaying = false;
+
+      if (this.enableSetNowPlaying) {
+        this._updatePlayback(MusicControl.STATE_PAUSED);
+      }
 
       if (this._onPause) {
         this._onPause();
@@ -350,5 +498,47 @@ export default class MusicPlayerService {
 
     return Math.floor(Math.random() * (this.queue.length - 1));
   }
-}
 
+  _setNowPlaying(track: Track): void {
+    let config = { ...this.setNowPlayingConfig };
+    let info = this._getInfo(track.additionalInfo);
+
+    MusicControl.setNowPlaying({
+      ...info,
+      color: config.color, // Notification Color - Android Only
+      notificationIcon: config.notificationIcon // Android Only (String), Android Drawable resource name for a custom notification icon
+    });
+  }
+
+  _updatePlayback(state: MusicControl.STATE_PLAYING | MusicControl.STATE_PAUSED): void {
+    this.getCurrentTime()
+      .then(elapsedTime => {
+        MusicControl.updatePlayback({
+          state,
+          elapsedTime
+        });
+      });
+  }
+
+  _getInfo(additionalInfo: ?{ title: ?string, artwork: ?any, artist: ?string, album: ?string, genre: ?string, duration: ?number }): { title: string, artwork: ?any, artist: string, album: string, genre: string, duration: number } {
+    if (!additionalInfo) {
+      return {
+        title: '<unknown>',
+        artwork: undefined,
+        artist: '<unknown>',
+        album: '<unknown>',
+        genre: '<unknown>',
+        duration: 0,
+      }
+    }
+
+    return {
+      title: additionalInfo.title || '<unknown>',
+      artwork: additionalInfo.artwork || undefined, // URL or RN's image require()
+      artist: additionalInfo.artist || '<unknown>',
+      album: additionalInfo.album || '<unknown>',
+      genre: additionalInfo.genre || '<unknown>',
+      duration: parseFloat(additionalInfo.duration || 0), // (Seconds)
+    }
+  }
+}

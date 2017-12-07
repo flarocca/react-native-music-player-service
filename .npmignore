@@ -1,0 +1,8 @@
+__tests__/
+flow-typed/
+
+.babelrc
+.eslintrc
+.flowconfig
+.gitignore
+.gitattributes
