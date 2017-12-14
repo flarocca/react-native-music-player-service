@@ -1,7 +1,5 @@
 # react-native-music-player-service
 
-# Under construction
-
 React Native module ready to use for playing music and managing queue.
 It is intended to be used with no configuration and to have a clean and simple interface. It also provides almost everything what it is needed in order to work as a music player.
 
@@ -16,6 +14,11 @@ npm install -save react-native-music-player-service
 ```
 react-native link
 ```
+
+Or follow manual installation from:
+
+- [react-native-sound](https://github.com/zmxv/react-native-sound/wiki/Installation)
+- [react-native-music-control](https://github.com/tanguyantoine/react-native-music-control)
 
 
 ## API Overview
@@ -271,7 +274,7 @@ musicPlayerService.addEventListener(Events.EndReached, track => _event(Events.En
 var songsInformation = [
     {
         id: "1",
-        path: "//path_phisical_file",
+        path: "//path_physical_file",
         title: "track_1",
         album: "some album",
         artist: "some artist",
@@ -287,18 +290,11 @@ var tracks = songsInformation.map(s => {
 musicPlayerService.setQueue(tracks)
   .then(returnedQueue => {
       console.log('Queue has been set');
+      return musicPlayerService.togglePlayPause();
+  })
+  .then(() => {
+    console.log('Play or pause has been toggled');
   });
+
+musicPlayerService.playNext();
 ```
-
-
-## Usage with Redux
-
-```javascript
-
-```
-
-
-## FAQ
-
-
-# Under construction
