@@ -1,12 +1,25 @@
 {
   "name": "react-native-music-player-service",
-  "version": "0.1.3-beta",
-  "description": "Ready to use music player control",
+  "version": "0.1.4-beta",
+  "description": "React native ready to use Music Player",
+  "homepage": "https://github.com/flarocca/react-native-music-player-service",
+  "author": {
+    "name": "Facundo La Rocca",
+    "url": "https://github.com/flarocca"
+  },
   "license": "MIT",
   "private": false,
+  "keywords": [
+    "music",
+    "player",
+    "react native"
+  ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/flarocca/react-native-music-player-service.git"
+    "url": "git://github.com/flarocca/react-native-music-player-service.git"
+  },
+  "bugs": {
+    "url": "https://github.com/flarocca/react-native-music-player-service/issues"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
