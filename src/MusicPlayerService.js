@@ -10,40 +10,41 @@ import Events from './Events';
 
 //test: general errors managment
 
-let _bindFunctions = (contenxt: any): void => {
-  contenxt.setQueue = contenxt.setQueue.bind(contenxt);
-  contenxt.setRandomGenerator = contenxt.setRandomGenerator.bind(contenxt);
-  contenxt.resetRandomGenerator = contenxt.resetRandomGenerator.bind(contenxt);
-  contenxt.setRepeatMode = contenxt.setRepeatMode.bind(contenxt);
-  contenxt.appendToQueue = contenxt.appendToQueue.bind(contenxt);
-  contenxt.togglePlayPause = contenxt.togglePlayPause.bind(contenxt);
-  contenxt.playNext = contenxt.playNext.bind(contenxt);
-  contenxt.playPrev = contenxt.playPrev.bind(contenxt);
-  contenxt.stop = contenxt.stop.bind(contenxt);
-  contenxt.toggleRandom = contenxt.toggleRandom.bind(contenxt);
-  contenxt.addEventListener = contenxt.addEventListener.bind(contenxt);
-  contenxt.removeEventListener = contenxt.removeEventListener.bind(contenxt);
-  contenxt.getDuration = contenxt.getDuration.bind(contenxt);
-  contenxt.getCurrentTime = contenxt.getCurrentTime.bind(contenxt);
-  contenxt.setCurrentTime = contenxt.setCurrentTime.bind(contenxt);
+let _bindFunctions = (context: any): void => {
+  context.setQueue = context.setQueue.bind(context);
+  context.setRandomGenerator = context.setRandomGenerator.bind(context);
+  context.resetRandomGenerator = context.resetRandomGenerator.bind(context);
+  context.setRepeatMode = context.setRepeatMode.bind(context);
+  context.appendToQueue = context.appendToQueue.bind(context);
+  context.togglePlayPause = context.togglePlayPause.bind(context);
+  context.playNext = context.playNext.bind(context);
+  context.playPrev = context.playPrev.bind(context);
+  context.stop = context.stop.bind(context);
+  context.toggleRandom = context.toggleRandom.bind(context);
+  context.addEventListener = context.addEventListener.bind(context);
+  context.removeEventListener = context.removeEventListener.bind(context);
+  context.getDuration = context.getDuration.bind(context);
+  context.getCurrentTime = context.getCurrentTime.bind(context);
+  context.setCurrentTime = context.setCurrentTime.bind(context);
 
-  contenxt._initializeMusicControl = contenxt._initializeMusicControl.bind(contenxt);
-  contenxt._setEventListener = contenxt._setEventListener.bind(contenxt);
-  contenxt._loadTrack = contenxt._loadTrack.bind(contenxt);
-  contenxt._releaseTrack = contenxt._releaseTrack.bind(contenxt);
-  contenxt._playTrack = contenxt._playTrack.bind(contenxt);
-  contenxt._validateQueue = contenxt._validateQueue.bind(contenxt);
-  contenxt._pauseTrack = contenxt._pauseTrack.bind(contenxt);
-  contenxt._getNextNoneRepeatMode = contenxt._getNextNoneRepeatMode.bind(contenxt);
-  contenxt._getNextAllRepeatMode = contenxt._getNextAllRepeatMode.bind(contenxt);
-  contenxt._getPrevNoneRepeatMode = contenxt._getPrevNoneRepeatMode.bind(contenxt);
-  contenxt._getPrevAllRepeatMode = contenxt._getPrevAllRepeatMode.bind(contenxt);
-  contenxt._setNextTrack = contenxt._setNextTrack.bind(contenxt);
-  contenxt._setPreviousTrack = contenxt._setPreviousTrack.bind(contenxt);
-  contenxt._randomGenerator = contenxt._randomGenerator.bind(contenxt);
-  contenxt._setNowPlaying = contenxt._setNowPlaying.bind(contenxt);
-  contenxt._updatePlayback = contenxt._updatePlayback.bind(contenxt);
-  contenxt._getInfo = contenxt._getInfo.bind(contenxt);
+  context._initializeMusicControl = context._initializeMusicControl.bind(context);
+  context._setEventListener = context._setEventListener.bind(context);
+  context._loadTrack = context._loadTrack.bind(context);
+  context._releaseTrack = context._releaseTrack.bind(context);
+  context._playTrack = context._playTrack.bind(context);
+  context._validateQueue = context._validateQueue.bind(context);
+  context._pauseTrack = context._pauseTrack.bind(context);
+  context._getNextNoneRepeatMode = context._getNextNoneRepeatMode.bind(context);
+  context._getNextAllRepeatMode = context._getNextAllRepeatMode.bind(context);
+  context._getPrevNoneRepeatMode = context._getPrevNoneRepeatMode.bind(context);
+  context._getPrevAllRepeatMode = context._getPrevAllRepeatMode.bind(context);
+  context._setNextTrack = context._setNextTrack.bind(context);
+  context._setPreviousTrack = context._setPreviousTrack.bind(context);
+  context._randomGenerator = context._randomGenerator.bind(context);
+  context._setNowPlaying = context._setNowPlaying.bind(context);
+  context._updatePlayback = context._updatePlayback.bind(context);
+  context._getInfo = context._getInfo.bind(context);
+  context._validateAtPosition = context._validateAtPosition.bind(context);
 }
 
 export default class MusicPlayerService {
@@ -153,23 +154,21 @@ export default class MusicPlayerService {
   appendToQueue(queue: Array<Track>, atPosition: ?number): Promise<Array<Track>> {
     try {
       this._validateQueue(queue);
+      this._validateAtPosition(queue, atPosition);
+
+      if (this.queue.length == 0) {
+        return this.setQueue(queue);
+      }
 
       if (atPosition) {
-        let pos = parseInt(atPosition);
-
-        if (!isNaN(pos) && (pos >= 0 && pos < this.queue.length)) {
-          let after = this.queue.splice(0, atPosition || this.queue.length - 1);
-          this.queue = this.queue.concat(queue).concat(after).map((track, index) => {
-            track.position = index;
-            return track;
-          });
-        } else {
-          throw new Error('Parameter atPosition must be a number between 0 and queue.length. Received [' + atPosition + ']');
-        }
+        let after = this.queue.splice(0, atPosition || this.queue.length - 1);
+        this.queue = this.queue.concat(queue).concat(after).map((track, index) => {
+          track.position = index;
+          return track;
+        });
       } else {
         this.queue = this.queue.concat(queue);
       }
-      //If no queue, then set currentIndex
 
       return Promise.resolve(this.queue);
     } catch (error) {
@@ -400,6 +399,15 @@ export default class MusicPlayerService {
     for (let i = 0; i < queue.length; i++) {
       if (!(queue[i] instanceof Track)) {
         throw new Error('Invalid elements in queue [not Track | index: ' + i + ']');
+      }
+    }
+  }
+
+  _validateAtPosition(queue: Array<Track>, atPosition: ?number): void {
+    if (atPosition) {
+      let pos = parseInt(atPosition);
+      if (isNaN(pos) || pos < 0 || pos > queue.length) {
+        throw new Error('Parameter atPosition must be a number between 0 and queue.length. Received [' + atPosition + ']');
       }
     }
   }

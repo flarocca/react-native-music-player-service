@@ -337,7 +337,7 @@ test('MusicPlayerService | appendToQueue without atPosition | new queue is appen
     });
 });
 
-test('MusicPlayerService | appendToQueue without atPosition | new queue is appended at position 1', () => {
+test('MusicPlayerService | appendToQueue with atPosition | new queue is appended at position atPosition', () => {
   let musicPlayerService = new MusicPlayerService();
   let originalQueue = [new Track({ id: '1', path: 'path' }), new Track({ id: '4', path: 'path' })];
   musicPlayerService.setQueue(originalQueue);
@@ -351,6 +351,19 @@ test('MusicPlayerService | appendToQueue without atPosition | new queue is appen
     .then(returnedQueue => {
       expect(returnedQueue).toEqual(fullQueue);
       expect(musicPlayerService.queue).toEqual(fullQueue);
+    });
+});
+
+test('MusicPlayerService | appendToQueue is called before setting up the queue | setQueue is called', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '4', path: 'path' })];
+  musicPlayerService.setQueue = jest.fn(() => Promise.resolve(queue));
+
+  expect.assertions(2);
+  return musicPlayerService.appendToQueue(queue, 1)
+    .then(returnedQueue => {
+      expect(musicPlayerService.setQueue).toHaveBeenCalledTimes(1);
+      expect(musicPlayerService.setQueue).toHaveBeenCalledWith(queue);
     });
 });
 
@@ -1395,7 +1408,7 @@ test('MusicPlayerService | playPrev and currentIndex changes | _releaseTrack is 
     .then(() => {
       musicPlayerService._releaseTrack.mockClear()
       musicPlayerService.currentIndex = 1;
-      
+
       musicPlayerService.playPrev();
 
       expect(musicPlayerService._releaseTrack).toHaveBeenCalledTimes(1);
