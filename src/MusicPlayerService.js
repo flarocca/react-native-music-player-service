@@ -26,6 +26,7 @@ let _bindFunctions = (context: any): void => {
   context.getDuration = context.getDuration.bind(context);
   context.getCurrentTime = context.getCurrentTime.bind(context);
   context.setCurrentTime = context.setCurrentTime.bind(context);
+  context.removeFromQueue = context.removeFromQueue.bind(context);
 
   context._initializeMusicControl = context._initializeMusicControl.bind(context);
   context._setEventListener = context._setEventListener.bind(context);
@@ -45,6 +46,7 @@ let _bindFunctions = (context: any): void => {
   context._updatePlayback = context._updatePlayback.bind(context);
   context._getInfo = context._getInfo.bind(context);
   context._validateAtPosition = context._validateAtPosition.bind(context);
+  context._validateIds = context._validateIds.bind(this);
 }
 
 export default class MusicPlayerService {
@@ -176,6 +178,43 @@ export default class MusicPlayerService {
     }
   }
 
+  removeFromQueue(ids: Array<string>): Promise<Array<Track>> {
+    try {
+      this._validateIds(ids);
+      let mustResetPlaying = false;
+
+      while (ids.length > 0) {
+        let i = this.queue.findIndex(track => {
+          return track.id === ids[0];
+        });
+        if (i !== -1) {
+          this.queue.splice(i, 1);
+
+          if (i < this.currentIndex) {
+            this.currentIndex -= 1;
+          } else if (i === this.currentIndex) {
+            mustResetPlaying = true;
+          }
+        }
+        ids.splice(0, 1);
+      }
+
+      if (mustResetPlaying) {
+        let wasPlaying = this.isPlaying;
+        this.stop();
+
+        if (this.queue.length > 0 && wasPlaying) {
+          return this.togglePlayPause()
+            .then(() => this.queue);
+        }
+      }
+
+      return Promise.resolve(this.queue);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
   togglePlayPause(): Promise<any> {
     if (!this.queue.length) {
       return Promise.reject('Queue not set. Set queue before playing.');
@@ -242,6 +281,7 @@ export default class MusicPlayerService {
     if (this._trackPlaying) {
       this._trackPlaying.stop();
       this._releaseTrack();
+      this.isPlaying = false;
 
       if (this.enableSetNowPlaying) {
         this._updatePlayback(MusicControl.STATE_PAUSED);
@@ -408,6 +448,18 @@ export default class MusicPlayerService {
       let pos = parseInt(atPosition);
       if (isNaN(pos) || pos < 0 || pos > queue.length) {
         throw new Error('Parameter atPosition must be a number between 0 and queue.length. Received [' + atPosition + ']');
+      }
+    }
+  }
+
+  _validateIds(ids: Array<string>): void {
+    if (ids === undefined || ids === null || !Array.isArray(ids)) {
+      throw new Error('Invalid ids. Received [undefined | null | non-array]');
+    }
+
+    for (let i = 0; i < ids.length; i++) {
+      if (!(typeof ids[i] === "string")) {
+        throw new Error('Invalid elements in ids [not String | index: ' + i + ']');
       }
     }
   }

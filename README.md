@@ -127,6 +127,18 @@ queue | ``Array<Track>`` | ✓
 atPosition | ``number`` | 
 
 
+### removeFromQueue
+
+Removes from the queue the ids sent by through parameters. If an id is not found in the queue it is just ignored. If the current playing track is removed, the reproduction is stopped and next track in the queue is automaticly played.
+Returns a promise with the queue after being modified.
+
+- Return type: ``Promise<Array<Track>>``
+
+Parameters | Type | Mandatory
+---|---|---
+ids | ``Array<string>`` | ✓
+
+
 ### togglePlayPause
 
 Starts playing the track at the current index or pauses it if it was already playing.

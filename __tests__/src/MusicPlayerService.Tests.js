@@ -1473,6 +1473,22 @@ test('MusicPlayerService | stop and track loaded and onStop is set | onStop is c
     });
 });
 
+test('MusicPlayerService | stop when is playing | isPlaying is set to false', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let newQueue = [new Track({ id: '2', path: 'some path' })];
+
+  expect.assertions(1);
+  return musicPlayerService.setQueue(newQueue)
+    .then(returnedQueue => {
+      return musicPlayerService.togglePlayPause()
+    })
+    .then(() => {
+      musicPlayerService.stop();
+      
+      expect(musicPlayerService.isPlaying).toEqual(false);
+    });
+});
+
 test('MusicPlayerService | stop and enableSetNowPlaying true | MusicControl.updatePlayback is called', () => {
   let setNowPlayingConfig = {
     color: 'some color',
@@ -1653,4 +1669,160 @@ test('MusicPlayerService | _setNowPlaying with track with no configuration provi
     color: undefined,
     notificationIcon: undefined
   });
+});
+
+test('MusicPlayerService | removeFromQueue is called with undefined | throws invalid argument', () => {
+  let musicPlayerService = new MusicPlayerService();
+
+  expect.assertions(1);
+  return musicPlayerService.removeFromQueue(undefined)
+    .catch(error => {
+      expect(error.message).toEqual('Invalid ids. Received [undefined | null | non-array]');
+    });
+});
+
+test('MusicPlayerService | removeFromQueue is called with null | throws invalid argument', () => {
+  let musicPlayerService = new MusicPlayerService();
+
+  expect.assertions(1);
+  return musicPlayerService.removeFromQueue(null)
+    .catch(error => {
+      expect(error.message).toEqual('Invalid ids. Received [undefined | null | non-array]');
+    });
+});
+
+test('MusicPlayerService | removeFromQueue is called with non-array | throws invalid argument', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let nonArrayParam = {};
+
+  expect.assertions(1);
+  return musicPlayerService.removeFromQueue(nonArrayParam)
+    .catch(error => {
+      expect(error.message).toEqual('Invalid ids. Received [undefined | null | non-array]');
+    });
+});
+
+test('MusicPlayerService | removeFromQueue is called with array of non-string | throws invalid argument', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let nonStringArrayParam = [{}, {}];
+
+  expect.assertions(1);
+  return musicPlayerService.removeFromQueue(nonStringArrayParam)
+    .catch(error => {
+      expect(error.message).toEqual('Invalid elements in ids [not String | index: 0]');
+    });
+});
+
+test('MusicPlayerService | removeFromQueue is called with array of non-existent ids | the queue does not change', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '2', path: 'path' })];
+  let nonExistantIds = ['3'];
+
+  expect.assertions(2);
+  return musicPlayerService.setQueue(queue)
+    .then(returnedQueue => {
+      return musicPlayerService.removeFromQueue(nonExistantIds)
+    })
+    .then(newQueue => {
+      expect(musicPlayerService.queue).toEqual(queue);
+      expect(newQueue).toEqual(queue);
+    });
+});
+
+test('MusicPlayerService | removeFromQueue is called with array of existent ids | those ids are removed', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '2', path: 'path' }), new Track({ id: '3', path: 'path' }), new Track({ id: '4', path: 'path' })];
+  let expectedQueue = [new Track({ id: '1', path: 'path', position: 0 }), new Track({ id: '2', path: 'path', position: 1 })];
+  let ids = ['3', '4'];
+
+  expect.assertions(2);
+  return musicPlayerService.setQueue(queue)
+    .then(returnedQueue => {
+      return musicPlayerService.removeFromQueue(ids)
+    })
+    .then(newQueue => {
+      expect(musicPlayerService.queue).toEqual(expectedQueue);
+      expect(newQueue).toEqual(expectedQueue);
+    })
+});
+
+test('MusicPlayerService | removeFromQueue and ids are situated before currentIndex | currentIndex moves', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '2', path: 'path' }), new Track({ id: '3', path: 'path' }), new Track({ id: '4', path: 'path' })];
+  let expectedQueue = [new Track({ id: '1', path: 'path', position: 0 }), new Track({ id: '2', path: 'path', position: 1 })];
+  let ids = ['2'];
+
+  expect.assertions(1);
+  return musicPlayerService.setQueue(queue)
+    .then(returnedQueue => {
+      musicPlayerService.currentIndex = 2;
+      return musicPlayerService.removeFromQueue(ids)
+    })
+    .then(newQueue => {
+      expect(musicPlayerService.currentIndex).toEqual(1);
+    })
+});
+
+test('MusicPlayerService | removeFromQueue and ids are situated after currentIndex | currentIndex does not change', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '2', path: 'path' }), new Track({ id: '3', path: 'path' }), new Track({ id: '4', path: 'path' })];
+  let expectedQueue = [new Track({ id: '1', path: 'path', position: 0 }), new Track({ id: '2', path: 'path', position: 1 })];
+  let ids = ['3'];
+
+  expect.assertions(1);
+  return musicPlayerService.setQueue(queue)
+    .then(returnedQueue => {
+      musicPlayerService.currentIndex = 1;
+      return musicPlayerService.removeFromQueue(ids)
+    })
+    .then(newQueue => {
+      expect(musicPlayerService.currentIndex).toEqual(1);
+    })
+});
+
+test('MusicPlayerService | removeFromQueue with an id currently playing | reproduction resets', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '2', path: 'path' }), new Track({ id: '3', path: 'path' }), new Track({ id: '4', path: 'path' })];
+  let ids = ['2'];
+
+  expect.assertions(2);
+  return musicPlayerService.setQueue(queue)
+    .then(returnedQueue => {
+      musicPlayerService.playNext();
+
+      return musicPlayerService.togglePlayPause()
+    })
+    .then(returnedQueue => {
+      musicPlayerService.stop = jest.fn();
+      musicPlayerService.togglePlayPause = jest.fn(() => Promise.resolve());
+
+      return musicPlayerService.removeFromQueue(ids)
+    })
+    .then(newQueue => {
+      expect(musicPlayerService.stop).toHaveBeenCalledTimes(1);
+      expect(musicPlayerService.togglePlayPause).toHaveBeenCalledTimes(1);
+    })
+});
+
+test('MusicPlayerService | removeFromQueue all tracks when playing | reproduction stops', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '2', path: 'path' }), new Track({ id: '3', path: 'path' }), new Track({ id: '4', path: 'path' })];
+  let ids = ['1', '2', '3', '4'];
+
+  expect.assertions(3);
+  return musicPlayerService.setQueue(queue)
+    .then(returnedQueue => {
+      return musicPlayerService.togglePlayPause()
+    })
+    .then(returnedQueue => {
+      musicPlayerService.stop = jest.fn();
+      musicPlayerService.togglePlayPause = jest.fn();
+
+      return musicPlayerService.removeFromQueue(ids)
+    })
+    .then(newQueue => {
+      expect(musicPlayerService.stop).toHaveBeenCalledTimes(1);
+      expect(musicPlayerService.togglePlayPause).not.toHaveBeenCalled();
+      expect(newQueue).toHaveLength(0);
+    })
 });
