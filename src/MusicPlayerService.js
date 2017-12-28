@@ -27,6 +27,7 @@ let _bindFunctions = (context: any): void => {
   context.getCurrentTime = context.getCurrentTime.bind(context);
   context.setCurrentTime = context.setCurrentTime.bind(context);
   context.removeFromQueue = context.removeFromQueue.bind(context);
+  context.play = context.play.bind(context);
 
   context._initializeMusicControl = context._initializeMusicControl.bind(context);
   context._setEventListener = context._setEventListener.bind(context);
@@ -229,6 +230,24 @@ export default class MusicPlayerService {
     } else {
       return this._pauseTrack();
     }
+  }
+
+  play(id: string): void {
+    if (!id || typeof id !== 'string') {
+      throw new Error('Invalid id. Received [null | undefined | not string]');
+    }
+
+    let index = this.queue.findIndex(track => track.id === id);
+    if (index === -1) {
+      throw new Error('Id does not exist. Received [' + id + ']');
+    }
+
+    if (this.isPlaying) {
+      this.stop();
+    }
+
+    this.currentIndex = index;
+    this.togglePlayPause();
   }
 
   playNext(): void {

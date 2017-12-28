@@ -1484,7 +1484,7 @@ test('MusicPlayerService | stop when is playing | isPlaying is set to false', ()
     })
     .then(() => {
       musicPlayerService.stop();
-      
+
       expect(musicPlayerService.isPlaying).toEqual(false);
     });
 });
@@ -1825,4 +1825,91 @@ test('MusicPlayerService | removeFromQueue all tracks when playing | reproductio
       expect(musicPlayerService.togglePlayPause).not.toHaveBeenCalled();
       expect(newQueue).toHaveLength(0);
     })
+});
+
+test('MusicPlayerService | play with a undefined id | throws invalid id exception', () => {
+  let musicPlayerService = new MusicPlayerService();
+
+  expect.assertions(1);
+  expect(() => musicPlayerService.play(undefined)).toThrowError('Invalid id. Received [null | undefined | not string]');
+});
+
+test('MusicPlayerService | play with a null id | throws invalid id exception', () => {
+  let musicPlayerService = new MusicPlayerService();
+
+  expect.assertions(1);
+  expect(() => musicPlayerService.play(null)).toThrowError('Invalid id. Received [null | undefined | not string]');
+});
+
+test('MusicPlayerService | play with an non-string id | throws invalid id exception', () => {
+  let musicPlayerService = new MusicPlayerService();
+
+  expect.assertions(1);
+  expect(() => musicPlayerService.play({})).toThrowError('Invalid id. Received [null | undefined | not string]');
+});
+
+test('MusicPlayerService | play with an non-existant id | throws non-existant id exception', () => {
+  let musicPlayerService = new MusicPlayerService();
+
+  expect.assertions(1);
+  expect(() => musicPlayerService.play('1')).toThrowError('Id does not exist. Received [1]');
+});
+
+test('MusicPlayerService | play when playing | stop is called', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '2', path: 'path' })];
+
+  musicPlayerService.stop = jest.fn();
+
+  expect.assertions(1);
+  return musicPlayerService.setQueue(queue)
+    .then(() => {
+      musicPlayerService.isPlaying = true;
+      musicPlayerService.play('1');
+
+      expect(musicPlayerService.stop).toHaveBeenCalledTimes(1);
+    });
+});
+
+test('MusicPlayerService | play when not playing | stop is not called', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '2', path: 'path' })];
+
+  musicPlayerService.stop = jest.fn();
+
+  expect.assertions(1);
+  return musicPlayerService.setQueue(queue)
+    .then(returnedQueue => {
+      musicPlayerService.play('1');
+
+      expect(musicPlayerService.stop).not.toHaveBeenCalled();
+    });
+});
+
+test('MusicPlayerService | play with an id | currentIndex is set to the corresponding position', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '2', path: 'path' })];
+
+  expect.assertions(1);
+  return musicPlayerService.setQueue(queue)
+    .then(returnedQueue => {
+      musicPlayerService.play('2');
+
+      expect(musicPlayerService.currentIndex).toEqual(1);
+    });
+});
+
+test('MusicPlayerService | play with an id | currentIndex togglePlayPause is called', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let queue = [new Track({ id: '1', path: 'path' }), new Track({ id: '2', path: 'path' })];
+
+  musicPlayerService.togglePlayPause = jest.fn();
+
+  expect.assertions(1);
+  return musicPlayerService.setQueue(queue)
+    .then(returnedQueue => {
+      musicPlayerService.play('2');
+
+      expect(musicPlayerService.togglePlayPause).toHaveBeenCalledTimes(1);
+    });
 });

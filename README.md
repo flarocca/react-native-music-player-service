@@ -149,6 +149,20 @@ If Events.Play was set, then that callback will be fired receiving the current T
 - Return type: ``Promise<Any>``
 
 
+### play
+
+Starts playing the track corresponding to the id passed through parameters. Is important to mention that the currentIndex will be moved to the position where the track is situated.
+If the id does not exist or it is null or undefined an exception is thrown. If there is a track in reproduction it will be stopped.
+
+Event.Stop and Event.Play will be fired if they were properly set.
+
+- Return type: ``void``
+
+Parameters | Type | Mandatory
+---|---|---
+id | ``string`` | ✓
+
+
 ### playNext
 
 It jumps to the next track in the queue according to the repeat mode selected:
