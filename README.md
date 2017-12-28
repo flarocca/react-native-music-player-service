@@ -1,11 +1,14 @@
 [npm-badge]: https://img.shields.io/badge/npm-v0.1.4--beta-blue.svg
 [coverage-badge]: https://img.shields.io/badge/coverage-%2597-brightgreen.svg
+[license-badge]: https://img.shields.io/badge/license-MIT-red.svg
 [npm-url]: https://www.npmjs.com/package/react-native-music-player-service
+[license-url]: https://github.com/flarocca/react-native-music-player-service/blob/master/LICENSE
 
 # react-native-music-player-service
 
 [![npm][npm-badge]][npm-url]
 ![coverage][coverage-badge]
+[![license][license-badge]][license-url]
 
 React Native module ready to use for playing music and managing queue.
 It is intended to be used with no configuration and to have a clean and simple interface. It also provides almost everything what it is needed in order to work as a music player.
