@@ -477,6 +477,7 @@ test('MusicPlayerService | addEventListener setting events | events are set', ()
   musicPlayerService.addEventListener(Events.Next, event);
   musicPlayerService.addEventListener(Events.Previous, event);
   musicPlayerService.addEventListener(Events.EndReached, event);
+  musicPlayerService.addEventListener(Events.OnError, event);
 
   musicPlayerService._onPlay();
   musicPlayerService._onPause();
@@ -484,9 +485,10 @@ test('MusicPlayerService | addEventListener setting events | events are set', ()
   musicPlayerService._onNext();
   musicPlayerService._onPrevious();
   musicPlayerService._onEndReached();
+  musicPlayerService._onError();
 
   expect.assertions(1);
-  expect(event).toHaveBeenCalledTimes(6);
+  expect(event).toHaveBeenCalledTimes(7);
 });
 
 test('MusicPlayerService | removeEventListener with invalid event | throws error invalid event', () => {
@@ -508,6 +510,7 @@ test('MusicPlayerService | removeEventListener setting events | events are set',
   musicPlayerService.addEventListener(Events.Next, event);
   musicPlayerService.addEventListener(Events.Previous, event);
   musicPlayerService.addEventListener(Events.EndReached, event);
+  musicPlayerService.addEventListener(Events.OnError, event);
 
   musicPlayerService.removeEventListener(Events.Play);
   musicPlayerService.removeEventListener(Events.Pause);
@@ -515,14 +518,16 @@ test('MusicPlayerService | removeEventListener setting events | events are set',
   musicPlayerService.removeEventListener(Events.Next);
   musicPlayerService.removeEventListener(Events.Previous);
   musicPlayerService.removeEventListener(Events.EndReached);
+  musicPlayerService.removeEventListener(Events.OnError);
 
-  expect.assertions(6);
+  expect.assertions(7);
   expect(musicPlayerService._onPlay).toBeNull();
   expect(musicPlayerService._onPause).toBeNull();
   expect(musicPlayerService._onStop).toBeNull();
   expect(musicPlayerService._onNext).toBeNull();
   expect(musicPlayerService._onPrevious).toBeNull();
   expect(musicPlayerService._onEndReached).toBeNull();
+  expect(musicPlayerService._onError).toBeNull();
 });
 
 test('MusicPlayerService | tooglePlayPause when is not playing and no track loaded | track at currentIndex is loaded', () => {
@@ -684,6 +689,24 @@ test('MusicPlayerService | tooglePlayPause when is playing | isPlaying is set to
     })
     .then(() => {
       expect(musicPlayerService.isPlaying).toEqual(false);
+    });
+});
+
+test('MusicPlayerService | tooglePlayPause and an error is thrown | returns Promise.reject with the error', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let newQueue = [new Track({ id: '2', path: 'some path' })];
+  let expectedError = new Error('error');
+
+  musicPlayerService._pauseTrack = jest.fn(() => { throw expectedError; });
+
+  expect.assertions(1);
+  return musicPlayerService.setQueue(newQueue)
+    .then(returnedQueue => {
+      musicPlayerService.isPlaying = true;
+      return musicPlayerService.togglePlayPause()
+    })
+    .catch(error => {
+      expect(error).toEqual(expectedError);
     });
 });
 
@@ -1831,28 +1854,40 @@ test('MusicPlayerService | play with a undefined id | throws invalid id exceptio
   let musicPlayerService = new MusicPlayerService();
 
   expect.assertions(1);
-  expect(() => musicPlayerService.play(undefined)).toThrowError('Invalid id. Received [null | undefined | not string]');
+  return musicPlayerService.play(undefined)
+    .catch(error => {
+      expect(error).toEqual('Invalid id. Received [null | undefined | not string]');
+    });
 });
 
 test('MusicPlayerService | play with a null id | throws invalid id exception', () => {
   let musicPlayerService = new MusicPlayerService();
 
   expect.assertions(1);
-  expect(() => musicPlayerService.play(null)).toThrowError('Invalid id. Received [null | undefined | not string]');
+  return musicPlayerService.play(null)
+    .catch(error => {
+      expect(error).toEqual('Invalid id. Received [null | undefined | not string]');
+    });
 });
 
 test('MusicPlayerService | play with an non-string id | throws invalid id exception', () => {
   let musicPlayerService = new MusicPlayerService();
 
   expect.assertions(1);
-  expect(() => musicPlayerService.play({})).toThrowError('Invalid id. Received [null | undefined | not string]');
+  return musicPlayerService.play({})
+    .catch(error => {
+      expect(error).toEqual('Invalid id. Received [null | undefined | not string]');
+    });
 });
 
 test('MusicPlayerService | play with an non-existant id | throws non-existant id exception', () => {
   let musicPlayerService = new MusicPlayerService();
 
   expect.assertions(1);
-  expect(() => musicPlayerService.play('1')).toThrowError('Id does not exist. Received [1]');
+  return musicPlayerService.play('1')
+    .catch(error => {
+      expect(error).toEqual('Id does not exist. Received [1]');
+    });
 });
 
 test('MusicPlayerService | play when playing | stop is called', () => {
@@ -1865,8 +1900,9 @@ test('MusicPlayerService | play when playing | stop is called', () => {
   return musicPlayerService.setQueue(queue)
     .then(() => {
       musicPlayerService.isPlaying = true;
-      musicPlayerService.play('1');
-
+      return musicPlayerService.play('1');
+    })
+    .then(() => {
       expect(musicPlayerService.stop).toHaveBeenCalledTimes(1);
     });
 });
@@ -1879,9 +1915,8 @@ test('MusicPlayerService | play when not playing | stop is not called', () => {
 
   expect.assertions(1);
   return musicPlayerService.setQueue(queue)
-    .then(returnedQueue => {
-      musicPlayerService.play('1');
-
+    .then(returnedQueue => musicPlayerService.play('1'))
+    .then(() => {
       expect(musicPlayerService.stop).not.toHaveBeenCalled();
     });
 });
@@ -1892,9 +1927,8 @@ test('MusicPlayerService | play with an id | currentIndex is set to the correspo
 
   expect.assertions(1);
   return musicPlayerService.setQueue(queue)
-    .then(returnedQueue => {
-      musicPlayerService.play('2');
-
+    .then(returnedQueue => musicPlayerService.play('2'))
+    .then(() => {
       expect(musicPlayerService.currentIndex).toEqual(1);
     });
 });
@@ -1907,9 +1941,80 @@ test('MusicPlayerService | play with an id | currentIndex togglePlayPause is cal
 
   expect.assertions(1);
   return musicPlayerService.setQueue(queue)
-    .then(returnedQueue => {
-      musicPlayerService.play('2');
-
+    .then(returnedQueue => musicPlayerService.play('2'))
+    .then(() => {
       expect(musicPlayerService.togglePlayPause).toHaveBeenCalledTimes(1);
+    });
+});
+
+test('MusicPlayerService | play and an error is thrown | returns Promise reject', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let newQueue = [new Track({ id: '2', path: 'some path' })];
+  let callback = jest.fn();
+  let expectedError = new Error('error');
+
+  musicPlayerService.addEventListener(Events.OnError, callback);
+  musicPlayerService.stop = jest.fn(() => { throw expectedError });
+
+  expect.assertions(1);
+  return musicPlayerService.setQueue(newQueue)
+    .then(returnedQueue => {
+      musicPlayerService.isPlaying = true;
+      return musicPlayerService.play('2');
+    })
+    .catch(error => {
+      expect(error).toEqual(expectedError);
+    });
+});
+
+test('MusicPlayerService | playNext and Events.OnError is set and an error is thrown | Events.OnError is called', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let callback = jest.fn();
+  let expectedError = new Error('error');
+
+  musicPlayerService.addEventListener(Events.OnError, callback);
+  musicPlayerService._setNextTrack = jest.fn(() => { throw expectedError });
+
+  expect.assertions(2);
+  musicPlayerService.playNext();
+
+  expect(callback).toHaveBeenCalledTimes(1);
+  expect(callback).toHaveBeenCalledWith(expectedError);
+});
+
+test('MusicPlayerService | playPrev and Events.OnError is set and an error is thrown | Events.OnError is called', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let callback = jest.fn();
+  let expectedError = new Error('error');
+
+  musicPlayerService.addEventListener(Events.OnError, callback);
+  musicPlayerService._setPreviousTrack = jest.fn(() => { throw expectedError });
+
+  expect.assertions(2);
+  musicPlayerService.playPrev();
+
+  expect(callback).toHaveBeenCalledTimes(1);
+  expect(callback).toHaveBeenCalledWith(expectedError);
+});
+
+test('MusicPlayerService | stop and Events.OnError is set and an error is thrown | Events.OnError is called', () => {
+  let musicPlayerService = new MusicPlayerService();
+  let newQueue = [new Track({ id: '2', path: 'some path' })];
+  let callback = jest.fn();
+  let expectedError = new Error('error');
+
+  musicPlayerService.addEventListener(Events.OnError, callback);
+
+  expect.assertions(2);
+  return musicPlayerService.setQueue(newQueue)
+    .then(returnedQueue => {
+      return musicPlayerService.togglePlayPause()
+    })
+    .then(() => {
+      musicPlayerService._releaseTrack = jest.fn(() => { throw expectedError });
+      musicPlayerService.stop();
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(expectedError);
     });
 });

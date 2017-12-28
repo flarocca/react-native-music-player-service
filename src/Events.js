@@ -5,4 +5,5 @@ export default class Events {
   static get Next() { return 'next' }
   static get Previous() { return 'previous' }
   static get EndReached() { return 'endReached' }
+  static get OnError() { return 'onError' }
 }

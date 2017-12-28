@@ -52,8 +52,8 @@ playNext | Play the next track in the queue.
 playPrev | Play the previous track in the queue.
 stop | Stop the current track.
 toggleRandom | Set random mode to true or false.
-addEventListener | Allows to set a callback for different events. <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li></ul>
-removeEventListener | Removes a callback for a particular event. <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li></ul>
+addEventListener | Allows to set a callback for different events. <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li><li>``Events.OnError``</li></ul>
+removeEventListener | Removes a callback for a particular event. <ul><li>``Events.Play``</li><li>``Events.Pause``</li><li>``Events.Stop``</li><li>``Events.Next``</li><li>``Events.Previous``</li><li>``Events.EndReached``</li><li>``Events.OnError``</li></ul>
 getDuration | Gets the duration of the current track
 getCurrentTime | Gets the current played elapsed time of the current track
 setCurrentTime | Sets the current played elapsed time of the current track
@@ -152,11 +152,11 @@ If Events.Play was set, then that callback will be fired receiving the current T
 ### play
 
 Starts playing the track corresponding to the id passed through parameters. Is important to mention that the currentIndex will be moved to the position where the track is situated.
-If the id does not exist or it is null or undefined an exception is thrown. If there is a track in reproduction it will be stopped.
+If the id does not exist or it is null or undefined the promise is rejected. If there is a track in reproduction it will be stopped.
 
 Event.Stop and Event.Play will be fired if they were properly set.
 
-- Return type: ``void``
+- Return type: ``Promise<Any>``
 
 Parameters | Type | Mandatory
 ---|---|---
@@ -175,6 +175,7 @@ If the service is actually playing the track will start automatically after chan
 When the random mode is toggled on, ``RepeatModes.All`` and ``RepeatModes.None`` behave the same, jumping according to the random generator.
 
 If Events.Next was set, then that callback will be fired receiving the current Track as a parameter.
+If an error occurs and Events.OnError was set, then that callback will be fired receiving the error as a parameter.
 
 - Return type: ``void``
 
@@ -191,6 +192,7 @@ If the service is actually playing the track will start automatically after chan
 When the random mode is toggled on, ``RepeatModes.All`` and ``RepeatModes.None`` behave the same, jumping according to the random generator.
 
 If Events.Previous was set, then that callback will be fired receiving the current Track as a parameter.
+If an error occurs and Events.OnError was set, then that callback will be fired receiving the error as a parameter.
 
 - Return type: ``void``
 
@@ -200,6 +202,7 @@ If Events.Previous was set, then that callback will be fired receiving the curre
 Stops the current reproduction and release the resources taken. It does not reset the queue.
 
 If Events.Stop was set, then that callback will be fired.
+If an error occurs and Events.OnError was set, then that callback will be fired receiving the error as a parameter.
 
 - Return type: ``void``
 

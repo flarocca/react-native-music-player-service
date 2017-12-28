@@ -8,8 +8,6 @@ import Track from './Track';
 import RepeatModes from './RepeatModes';
 import Events from './Events';
 
-//test: general errors managment
-
 let _bindFunctions = (context: any): void => {
   context.setQueue = context.setQueue.bind(context);
   context.setRandomGenerator = context.setRandomGenerator.bind(context);
@@ -84,6 +82,7 @@ export default class MusicPlayerService {
   _onNext: ?Function;
   _onPrevious: ?Function;
   _onEndReached: ?Function;
+  _onError: ?Function;
 
   constructor(enableSetNowPlaying: boolean = false, setNowPlayingConfig: ?{ notificationIcon: string, color: number } = null) {
     _bindFunctions(this);
@@ -217,97 +216,123 @@ export default class MusicPlayerService {
   }
 
   togglePlayPause(): Promise<any> {
-    if (!this.queue.length) {
-      return Promise.reject('Queue not set. Set queue before playing.');
-    }
-
-    if (!this.isPlaying) {
-      if (this.enableSetNowPlaying) {
-        this._setNowPlaying(this.queue[this.currentIndex]);
+    try {
+      if (!this.queue.length) {
+        return Promise.reject('Queue not set. Set queue before playing.');
       }
 
-      return this._playTrack();
-    } else {
-      return this._pauseTrack();
+      if (!this.isPlaying) {
+        if (this.enableSetNowPlaying) {
+          this._setNowPlaying(this.queue[this.currentIndex]);
+        }
+
+        return this._playTrack();
+      } else {
+        return this._pauseTrack();
+      }
+    } catch (error) {
+      return Promise.reject(error);
     }
   }
 
-  play(id: string): void {
-    if (!id || typeof id !== 'string') {
-      throw new Error('Invalid id. Received [null | undefined | not string]');
-    }
-
-    let index = this.queue.findIndex(track => track.id === id);
-    if (index === -1) {
-      throw new Error('Id does not exist. Received [' + id + ']');
-    }
-
-    if (this.isPlaying) {
-      this.stop();
-    }
-
-    this.currentIndex = index;
-    this.togglePlayPause();
-  }
-
-  playNext(): void {
-    let lastIndex = this.currentIndex;
-    this._setNextTrack();
-
-    if (lastIndex !== this.currentIndex) {
-      this._releaseTrack();
-
-      let track = this.queue[this.currentIndex];
-
-      if (this.enableSetNowPlaying) {
-        this._setNowPlaying(track);
+  play(id: string): Promise<any> {
+    try {
+      if (!id || typeof id !== 'string') {
+        return Promise.reject('Invalid id. Received [null | undefined | not string]');
       }
 
-      if (this._onNext) {
-        this._onNext(track);
+      let index = this.queue.findIndex(track => track.id === id);
+      if (index === -1) {
+        return Promise.reject('Id does not exist. Received [' + id + ']');
       }
 
       if (this.isPlaying) {
-        this._playTrack();
+        this.stop();
+      }
+
+      this.currentIndex = index;
+      return this.togglePlayPause();
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
+  playNext(): void {
+    try {
+      let lastIndex = this.currentIndex;
+      this._setNextTrack();
+
+      if (lastIndex !== this.currentIndex) {
+        this._releaseTrack();
+
+        let track = this.queue[this.currentIndex];
+
+        if (this.enableSetNowPlaying) {
+          this._setNowPlaying(track);
+        }
+
+        if (this._onNext) {
+          this._onNext(track);
+        }
+
+        if (this.isPlaying) {
+          this._playTrack();
+        }
+      }
+    } catch (error) {
+      if (this._onError) {
+        this._onError(error);
       }
     }
   }
 
   playPrev(): void {
-    let lastIndex = this.currentIndex;
-    this._setPreviousTrack();
+    try {
+      let lastIndex = this.currentIndex;
+      this._setPreviousTrack();
 
-    if (lastIndex !== this.currentIndex) {
-      this._releaseTrack();
+      if (lastIndex !== this.currentIndex) {
+        this._releaseTrack();
 
-      let track = this.queue[this.currentIndex];
+        let track = this.queue[this.currentIndex];
 
-      if (this.enableSetNowPlaying) {
-        this._setNowPlaying(track);
+        if (this.enableSetNowPlaying) {
+          this._setNowPlaying(track);
+        }
+
+        if (this._onPrevious) {
+          this._onPrevious(track);
+        }
+
+        if (this.isPlaying) {
+          this._playTrack();
+        }
       }
-
-      if (this._onPrevious) {
-        this._onPrevious(track);
-      }
-
-      if (this.isPlaying) {
-        this._playTrack();
+    } catch (error) {
+      if (this._onError) {
+        this._onError(error);
       }
     }
   }
 
   stop(): void {
-    if (this._trackPlaying) {
-      this._trackPlaying.stop();
-      this._releaseTrack();
-      this.isPlaying = false;
+    try {
+      if (this._trackPlaying) {
+        this._trackPlaying.stop();
+        this._releaseTrack();
+        this.isPlaying = false;
 
-      if (this.enableSetNowPlaying) {
-        this._updatePlayback(MusicControl.STATE_PAUSED);
+        if (this.enableSetNowPlaying) {
+          this._updatePlayback(MusicControl.STATE_PAUSED);
+        }
+
+        if (this._onStop) {
+          this._onStop();
+        }
       }
-
-      if (this._onStop) {
-        this._onStop();
+    } catch (error) {
+      if (this._onError) {
+        this._onError(error);
       }
     }
   }
@@ -317,7 +342,7 @@ export default class MusicPlayerService {
     return this.random;
   }
 
-  addEventListener(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached, callback: Function): void {
+  addEventListener(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached | Events.OnError, callback: Function): void {
     if (callback === undefined || callback === null || !Utils.isFunction(callback)) {
       throw new Error('Callback must not be null nor undefined. Allowed [Function]. Received [ ' + callback + ']');
     }
@@ -325,7 +350,7 @@ export default class MusicPlayerService {
     this._setEventListener(event, callback);
   }
 
-  removeEventListener(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached): void {
+  removeEventListener(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached | Events.OnError): void {
     this._setEventListener(event, null);
   }
 
@@ -373,7 +398,7 @@ export default class MusicPlayerService {
     MusicControl.on('previousTrack', this.playPrev);
   }
 
-  _setEventListener(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached, callback: ?Function) {
+  _setEventListener(event: Events.Play | Events.Pause | Events.Stop | Events.Next | Events.Previous | Events.EndReached | Events.OnError, callback: ?Function) {
     switch (event) {
       case Events.Play:
         this._onPlay = callback;
@@ -392,6 +417,9 @@ export default class MusicPlayerService {
         break;
       case Events.EndReached:
         this._onEndReached = callback;
+        break;
+      case Events.OnError:
+        this._onError = callback;
         break;
       default:
         throw new Error('Invalid event. Allowed [play | pause | stop | next | previous | endReached]. Received [' + event + ']');
